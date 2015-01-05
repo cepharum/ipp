@@ -1,0 +1,20 @@
+{
+  "name": "ipp",
+  "version": "0.0.2",
+  "description": "IPP message parser, stream reader and generator",
+  "main": "index.js",
+  "dependencies": {
+  },
+  "devDependencies": {
+    "nodeunit": ""
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cepharum/ipp-js.git"
+  },
+  "author": "cepharum GmbH",
+  "license": "MIT",
+  "scripts": {
+    "test": "nodeunit test"
+  }
+}
