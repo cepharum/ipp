@@ -26,11 +26,13 @@
  * @author: Thomas Urban
  */
 
-var MESSAGE  = require( "./lib/message" );
-var DATA     = require( "./lib/data" );
-var TYPE     = require( "./lib/type" );
-var GENERATE = require( "./lib/generate" );
-var STREAM   = require( "./lib/stream-parser" );
+"use strict";
+
+const MESSAGE = require( "./lib/message" );
+const DATA = require( "./lib/data" );
+const TYPE = require( "./lib/type" );
+const GENERATE = require( "./lib/generate" );
+const STREAM = require( "./lib/stream-parser" );
 
 
 
@@ -43,10 +45,10 @@ module.exports.IPPMessage = MESSAGE.IPPMessage;
 module.exports.IPPMessageStreamParser = STREAM.IPPMessageStreamParser;
 
 // export named pseudo-constants
-module.exports.OPERATION          = DATA.OPERATION;
-module.exports.STATUS             = DATA.STATUS;
-module.exports.ATTRIBUTE_GROUP    = DATA.ATTRIBUTE_GROUP;
-module.exports.ATTRIBUTE_TYPE     = DATA.ATTRIBUTE_TYPE;
+module.exports.OPERATION = DATA.OPERATION;
+module.exports.STATUS = DATA.STATUS;
+module.exports.ATTRIBUTE_GROUP = DATA.ATTRIBUTE_GROUP;
+module.exports.ATTRIBUTE_TYPE = DATA.ATTRIBUTE_TYPE;
 module.exports.ENUM_PRINTER_STATE = DATA.ENUM_PRINTER_STATE;
 
 // export all managers for typed values of attributes
@@ -69,61 +71,42 @@ module.exports.generators = GENERATE;
  * @param {Buffer} rawMessage
  * @returns {IPPMessage}
  */
-
-module.exports.parse = function( rawMessage ) {
-	"use strict";
-
-	return new MESSAGE.IPPMessage( rawMessage );
-};
+module.exports.parse = rawMessage => new MESSAGE.IPPMessage( rawMessage );
 
 /**
  * Creates new instance of MessageStreamParser.
  *
  * @returns {IPPMessageStreamParser}
  */
-
-module.exports.getParsingStream = function() {
-	"use strict";
-
-	return new STREAM.IPPMessageStreamParser();
-};
+module.exports.getParsingStream = () => new STREAM.IPPMessageStreamParser();
 
 /**
  * Retrieves expressjs-compatible middleware for parsing incoming IPP message.
  *
  * @returns {function({},{},function)}
  */
+module.exports.middleware = () => ( req, res, next ) => {
+	if ( req.is( "application/ipp" ) ) {
+		const streamParser = new STREAM.IPPMessageStreamParser();
 
-module.exports.middleware = function() {
-	return function( req, res, next ) {
-		"use strict";
+		streamParser.on( "message", /** @param {IPPMessage} message */ function( message ) {
+			req.ipp = {
+				header: message,
+				body: streamParser
+			};
 
-		if ( req.is( "application/ipp" ) ) {
-			var streamParser = new STREAM.IPPMessageStreamParser();
-
-			streamParser.on( "message", /** @param {IPPMessage} message */ function( message ) {
-				"use strict";
-
-				req.ipp = {
-					header: message,
-					body: streamParser
-				};
-
-				next();
-			} );
-
-			streamParser.on( "error", function( error ) {
-				"use strict";
-
-				error.message = "IPP parsing error: " + error.message;
-				error.status  = 500;
-
-				next( error );
-			} );
-
-			req.pipe( streamParser );
-		} else {
 			next();
-		}
-	};
+		} );
+
+		streamParser.on( "error", function( error ) {
+			error.message = "IPP parsing error: " + error.message;
+			error.status = 500;
+
+			next( error );
+		} );
+
+		req.pipe( streamParser );
+	} else {
+		next();
+	}
 };
