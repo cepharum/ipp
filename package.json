@@ -1,19 +1,23 @@
 {
-  "name": "ipp",
+  "name": "ipp-message",
   "version": "0.0.3",
-  "description": "IPP message parser, stream reader and generator",
+  "description": "an IPP message processor",
   "main": "index.js",
   "dependencies": {},
   "devDependencies": {
-    "nodeunit": ""
+    "eslint": "^5.5.0",
+    "eslint-config-cepharum": "^1.0.7",
+    "eslint-plugin-promise": "^4.0.1",
+    "mocha": "^5.2.0",
+    "should": "^13.2.3"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/cepharum/ipp-js.git"
+    "url": "https://github.com/cepharum/ipp.git"
   },
   "author": "cepharum GmbH",
   "license": "MIT",
   "scripts": {
-    "test": "nodeunit test"
+    "test": "mocha --ui tdd test/**/*.js"
   }
 }
