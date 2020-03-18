@@ -28,85 +28,93 @@
 
 "use strict";
 
-const MESSAGE = require( "./lib/message" );
-const DATA = require( "./lib/data" );
-const TYPE = require( "./lib/type" );
-const GENERATE = require( "./lib/generate" );
-const STREAM = require( "./lib/stream-parser" );
+const IPPMessage = require( "./lib/message" );
+const Data = require( "./lib/data" );
+const Types = require( "./lib/types" );
+const Generate = require( "./lib/generate" );
+const IPPMessageStreamParser = require( "./lib/stream-parser" );
 
 
 
 // --- public API ---
 
 /** @class IPPMessage */
-module.exports.IPPMessage = MESSAGE.IPPMessage;
+exports.IPPMessage = IPPMessage;
 
 /** @class IPPMessageStreamParser */
-module.exports.IPPMessageStreamParser = STREAM.IPPMessageStreamParser;
+exports.IPPMessageStreamParser = IPPMessageStreamParser;
 
 // export named pseudo-constants
-module.exports.OPERATION = DATA.OPERATION;
-module.exports.STATUS = DATA.STATUS;
-module.exports.ATTRIBUTE_GROUP = DATA.ATTRIBUTE_GROUP;
-module.exports.ATTRIBUTE_TYPE = DATA.ATTRIBUTE_TYPE;
-module.exports.ENUM_PRINTER_STATE = DATA.ENUM_PRINTER_STATE;
+exports.Operation = Data.Operation;
+exports.Status = Data.Status;
+exports.AttributeGroup = Data.AttributeGroup;
+exports.AttributeType = Data.AttributeType;
+exports.EnumPrinterState = Data.EnumPrinterState;
 
 // export all managers for typed values of attributes
-module.exports.AttributeType = TYPE.Type;
-module.exports.AttributeTypeNative = TYPE.TypeNative;
-module.exports.AttributeTypeDefault = TYPE.TypeDefault;
-module.exports.AttributeTypeUnknown = TYPE.TypeUnknown;
-module.exports.AttributeTypeNoValue = TYPE.TypeNoValue;
-module.exports.AttributeTypeResolution = TYPE.TypeResolution;
-module.exports.AttributeTypeRange = TYPE.TypeRange;
-module.exports.AttributeTypeStringWithLanguage = TYPE.TypeStringWithLanguage;
+exports.AttributeType = Types.Type;
+exports.AttributeTypeNative = Types.TypeNative;
+exports.AttributeTypeDefault = Types.TypeDefault;
+exports.AttributeTypeUnknown = Types.TypeUnknown;
+exports.AttributeTypeNoValue = Types.TypeNoValue;
+exports.AttributeTypeResolution = Types.TypeResolution;
+exports.AttributeTypeRange = Types.TypeRange;
+exports.AttributeTypeStringWithLanguage = Types.TypeStringWithLanguage;
 
 
-module.exports.generators = GENERATE;
+exports.Generators = Generate;
 
 
 /**
  * Parses IPP message contained in provided buffer.
  *
- * @param {Buffer} rawMessage
- * @returns {IPPMessage}
+ * @param {Buffer} rawMessage IPP message to be parsed
+ * @returns {IPPMessage} parsed IPP message
  */
-module.exports.parse = rawMessage => new MESSAGE.IPPMessage( rawMessage );
+exports.parse = rawMessage => new IPPMessage( rawMessage );
 
 /**
  * Creates new instance of MessageStreamParser.
  *
- * @returns {IPPMessageStreamParser}
+ * @returns {IPPMessageStreamParser} instance of stream parser
  */
-module.exports.getParsingStream = () => new STREAM.IPPMessageStreamParser();
+exports.getParsingStream = () => new IPPMessageStreamParser();
 
 /**
- * Retrieves expressjs-compatible middleware for parsing incoming IPP message.
+ * Generates connect/express compatible middleware detecting and extracting IPP
+ * message in handled requests.
  *
- * @returns {function({},{},function)}
+ * @returns {function(IncomingMessage,ServerResponse,function(error=):void)} generated middle ware
  */
-module.exports.middleware = () => ( req, res, next ) => {
+exports.middleware = () => ( req, res, next ) => {
+	let streamParser;
+
 	if ( req.is( "application/ipp" ) ) {
-		const streamParser = new STREAM.IPPMessageStreamParser();
+		streamParser = new IPPMessageStreamParser();
 
-		streamParser.on( "message", /** @param {IPPMessage} message */ function( message ) {
-			req.ipp = {
-				header: message,
-				body: streamParser
-			};
+		streamParser.on( "message", onMessage );
 
-			next();
-		} );
-
-		streamParser.on( "error", function( error ) {
-			error.message = "IPP parsing error: " + error.message;
-			error.status = 500;
-
-			next( error );
+		streamParser.on( "error", error => {
+			next( Object.assign( new Error( `IPP parsing error: ${error.stack}` ), { status: 500 } ) );
 		} );
 
 		req.pipe( streamParser );
 	} else {
+		next();
+	}
+
+	/**
+	 * Handles discovery of IPP message in current request.
+	 *
+	 * @param {IPPMessage} message IPP message found in request
+	 * @returns {void}
+	 */
+	function onMessage( message ) {
+		req.ipp = {
+			header: message,
+			body: streamParser,
+		};
+
 		next();
 	}
 };
